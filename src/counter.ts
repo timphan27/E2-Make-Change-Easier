@@ -15,14 +15,14 @@ let count = 0;
 let panel: HTMLParagraphElement | null = null;
 let panelUpdates = 0;
 
-// store the shared shield values in one typed snapshot.
+// Store the shared shield values in one typed snapshot.
 type ShieldSnapshot = {
   currentCharge: number;
   capacity: number;
   missingCharge: number;
 };
 
-//create specificed object of type ShieldSnapshot to return current values of shield
+// Create and return an object of type ShieldSnapshot with the current shield values.
 function getShieldSnapshot(): ShieldSnapshot {
   return {
     currentCharge: count,
@@ -30,6 +30,9 @@ function getShieldSnapshot(): ShieldSnapshot {
     missingCharge: capacity - count,
   };
 }
+
+// Announce completed shield changes.
+const shieldEvents = new EventTarget();
 
 function drawMeter(snapshot: ShieldSnapshot) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -60,17 +63,21 @@ function renderStats(snapshot: ShieldSnapshot) {
     `Shield charge: ${snapshot.currentCharge} · Missing charge: ${snapshot.missingCharge}`;
 }
 
-function refreshViews() {
-  const snapshot = getShieldSnapshot();
-  drawMeter(snapshot);
-  if (panel) updateStats(snapshot);
-}
+// Listen for completed changes and update the permanent HUD display.
+shieldEvents.addEventListener("shieldchange", () => {
+  drawMeter(getShieldSnapshot());
+});
 
 function setCount(next: number) {
   const bounded = Math.max(0, Math.min(capacity, next));
   if (bounded === count) return;
   count = bounded;
-  refreshViews();
+
+  // Announce the change instead of updating the permanent display directly.
+  shieldEvents.dispatchEvent(new Event("shieldchange"));
+
+  // The inspector can still update directly for C2.
+  if (panel) updateStats(getShieldSnapshot());
 }
 
 document.querySelector<HTMLButtonElement>("#counter-less")!.onclick = () => {
@@ -94,4 +101,5 @@ document.querySelector<HTMLButtonElement>("#counter-close")!.onclick = () => {
   panel = null;
 };
 
-refreshViews();
+// Draw the initial permanent display.
+drawMeter(getShieldSnapshot());
