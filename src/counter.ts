@@ -14,6 +14,7 @@ const capacity = 10;
 let count = 0;
 let panel: HTMLParagraphElement | null = null;
 let panelUpdates = 0;
+let inspectorListener: (() => void) | null = null;
 
 // Store the shared shield values in one typed snapshot.
 type ShieldSnapshot = {
@@ -51,15 +52,11 @@ function drawMeter(snapshot: ShieldSnapshot) {
     `Shield charge: ${snapshot.currentCharge} / ${snapshot.capacity}`;
 }
 
-function updateStats(snapshot: ShieldSnapshot) {
-  panelUpdates++;
-  diagnostic.textContent = `Inspector deliveries: ${panelUpdates}`;
-  renderStats(snapshot);
-}
-
-function renderStats(snapshot: ShieldSnapshot) {
-  if (!panel) return;
-  panel.textContent =
+function renderStats(
+  targetPanel: HTMLParagraphElement,
+  snapshot: ShieldSnapshot,
+) {
+  targetPanel.textContent =
     `Shield charge: ${snapshot.currentCharge} · Missing charge: ${snapshot.missingCharge}`;
 }
 
@@ -73,11 +70,8 @@ function setCount(next: number) {
   if (bounded === count) return;
   count = bounded;
 
-  // Announce the change instead of updating the permanent display directly.
+  // Announce the change so subscribed views can update.
   shieldEvents.dispatchEvent(new Event("shieldchange"));
-
-  // The inspector can still update directly for C2.
-  if (panel) updateStats(getShieldSnapshot());
 }
 
 document.querySelector<HTMLButtonElement>("#counter-less")!.onclick = () => {
@@ -89,14 +83,36 @@ document.querySelector<HTMLButtonElement>("#counter-more")!.onclick = () => {
 document.querySelector<HTMLButtonElement>("#counter-reset")!.onclick = () => {
   setCount(0);
 };
+
 document.querySelector<HTMLButtonElement>("#counter-open")!.onclick = () => {
   if (panel) return;
+
   panel = document.createElement("p");
   host.append(panel);
-  renderStats(getShieldSnapshot());
+
+  // Show the current snapshot without counting it as a delivery.
+  renderStats(panel, getShieldSnapshot());
+
+  // Subscribe the inspector to future shield changes.
+  const currentPanel = panel;
+  inspectorListener = () => {
+    panelUpdates++;
+    diagnostic.textContent = `Inspector deliveries: ${panelUpdates}`;
+    renderStats(currentPanel, getShieldSnapshot());
+  };
+
+  shieldEvents.addEventListener("shieldchange", inspectorListener);
 };
+
 document.querySelector<HTMLButtonElement>("#counter-close")!.onclick = () => {
   if (!panel) return;
+
+  // Stop receiving events before removing the inspector.
+  if (inspectorListener) {
+    shieldEvents.removeEventListener("shieldchange", inspectorListener);
+    inspectorListener = null;
+  }
+
   panel.remove();
   panel = null;
 };
