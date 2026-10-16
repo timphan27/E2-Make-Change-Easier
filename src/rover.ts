@@ -3,7 +3,21 @@ export {};
 const canvas = document.querySelector<HTMLCanvasElement>("#rover-canvas")!;
 const ctx = canvas.getContext("2d")!;
 const readout = document.querySelector<HTMLParagraphElement>("#rover-readout")!;
-const headings = ["North", "East", "South", "West"];
+
+// Store each direction's name and movement offsets together.
+type DirectionRecord = {
+  name: string;
+  dx: number;
+  dy: number;
+};
+
+const directions: DirectionRecord[] = [
+  { name: "North", dx: 0, dy: -1 },
+  { name: "East", dx: 1, dy: 0 },
+  { name: "South", dx: 0, dy: 1 },
+  { name: "West", dx: -1, dy: 0 },
+];
+
 let x = 2;
 let y = 2;
 let direction = 0;
@@ -32,25 +46,28 @@ function drawRover() {
   ctx.closePath();
   ctx.fill();
   ctx.restore();
+
+  // get the heading name from the current direction record.
   readout.textContent = `Position: (${x}, ${y}) · Facing: ${
-    headings[direction]
+    directions[direction].name
   }`;
 }
 
+// Move one grid cell forward using the current direction's offsets.
 const forwardCommand: Command = {
-  // Move one grid cell forward based on the rover's current direction.
   execute: () => {
-    if (direction === 0) y = Math.max(0, y - 1);
-    if (direction === 1) x = Math.min(4, x + 1);
-    if (direction === 2) y = Math.min(4, y + 1);
-    if (direction === 3) x = Math.max(0, x - 1);
+    // apply one shared movement rule instead of four direction branches.
+    const currentDirection = directions[direction];
+    x = Math.max(0, Math.min(4, x + currentDirection.dx));
+    y = Math.max(0, Math.min(4, y + currentDirection.dy));
   },
 };
 
 const rightCommand: Command = {
   // Turn the rover 90 degrees clockwise.
   execute: () => {
-    direction = (direction + 1) % 4;
+    // Advance to the next direction, wrapping back to North after West.
+    direction = (direction + 1) % directions.length;
   },
 };
 
@@ -71,4 +88,5 @@ document.querySelector<HTMLButtonElement>("#rover-reset")!.onclick = () => {
   direction = 0;
   drawRover();
 };
+
 drawRover();
