@@ -4,6 +4,11 @@ const canvas = document.querySelector<HTMLCanvasElement>("#rover-canvas")!;
 const ctx = canvas.getContext("2d")!;
 const readout = document.querySelector<HTMLParagraphElement>("#rover-readout")!;
 
+// get the pending-command list and the Run/Clear buttons from the HTML.
+const commandList = document.querySelector<HTMLUListElement>("#rover-queue")!;
+const runButton = document.querySelector<HTMLButtonElement>("#rover-run")!;
+const clearButton = document.querySelector<HTMLButtonElement>("#rover-clear")!;
+
 // Store each direction's name and movement offsets together.
 type DirectionRecord = {
   name: string;
@@ -24,8 +29,12 @@ let direction = 0;
 
 // A command defines an action the rover can execute.
 type Command = {
+  label: string;
   execute: () => void;
 };
+
+// Store commands here until the operator chooses Run.
+const commandQueue: Command[] = [];
 
 function drawRover() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -53,8 +62,29 @@ function drawRover() {
   }`;
 }
 
+// Display the queued commands in order and update the buttons.
+function updateCommandList() {
+  commandList.replaceChildren();
+
+  for (const command of commandQueue) {
+    const item = document.createElement("li");
+    item.textContent = command.label;
+    commandList.appendChild(item);
+  }
+
+  runButton.disabled = commandQueue.length === 0;
+  clearButton.disabled = commandQueue.length === 0;
+}
+
+// Add a command to the queue without executing it.
+function enqueueCommand(command: Command) {
+  commandQueue.push(command);
+  updateCommandList();
+}
+
 // Move one grid cell forward using the current direction's offsets.
 const forwardCommand: Command = {
+  label: "Forward",
   execute: () => {
     // apply one shared movement rule instead of four direction branches.
     const currentDirection = directions[direction];
@@ -64,6 +94,7 @@ const forwardCommand: Command = {
 };
 
 const rightCommand: Command = {
+  label: "Right",
   // Turn the rover 90 degrees clockwise.
   execute: () => {
     // Advance to the next direction, wrapping back to North after West.
@@ -71,22 +102,40 @@ const rightCommand: Command = {
   },
 };
 
-// The invoker executes a command without choosing its behavior by label.
 document.querySelector<HTMLButtonElement>("#rover-forward")!.onclick = () => {
-  forwardCommand.execute();
-  drawRover();
+  enqueueCommand(forwardCommand);
 };
 
 document.querySelector<HTMLButtonElement>("#rover-right")!.onclick = () => {
-  rightCommand.execute();
+  enqueueCommand(rightCommand);
+};
+
+// Run commands in fifo order, then empty the queue and redraw the rover.
+runButton.onclick = () => {
+  while (commandQueue.length > 0) {
+    const command = commandQueue.shift()!;
+    command.execute();
+  }
+
+  updateCommandList();
   drawRover();
 };
 
+//we want to clear pending commands without moving or turning the rover.
+clearButton.onclick = () => {
+  commandQueue.length = 0;
+  updateCommandList();
+};
+
+// Reset the rover immediately and discard any pending commands.
 document.querySelector<HTMLButtonElement>("#rover-reset")!.onclick = () => {
   x = 2;
   y = 2;
   direction = 0;
+  commandQueue.length = 0;
+  updateCommandList();
   drawRover();
 };
 
+updateCommandList();
 drawRover();
