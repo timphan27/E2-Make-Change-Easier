@@ -8,6 +8,11 @@ let x = 2;
 let y = 2;
 let direction = 0;
 
+// A command defines an action the rover can execute.
+type Command = {
+  execute: () => void;
+};
+
 function drawRover() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.strokeStyle = "#718881";
@@ -32,17 +37,34 @@ function drawRover() {
   }`;
 }
 
+const forwardCommand: Command = {
+  // Move one grid cell forward based on the rover's current direction.
+  execute: () => {
+    if (direction === 0) y = Math.max(0, y - 1);
+    if (direction === 1) x = Math.min(4, x + 1);
+    if (direction === 2) y = Math.min(4, y + 1);
+    if (direction === 3) x = Math.max(0, x - 1);
+  },
+};
+
+const rightCommand: Command = {
+  // Turn the rover 90 degrees clockwise.
+  execute: () => {
+    direction = (direction + 1) % 4;
+  },
+};
+
+// The invoker executes a command without choosing its behavior by label.
 document.querySelector<HTMLButtonElement>("#rover-forward")!.onclick = () => {
-  if (direction === 0) y = Math.max(0, y - 1);
-  if (direction === 1) x = Math.min(4, x + 1);
-  if (direction === 2) y = Math.min(4, y + 1);
-  if (direction === 3) x = Math.max(0, x - 1);
+  forwardCommand.execute();
   drawRover();
 };
+
 document.querySelector<HTMLButtonElement>("#rover-right")!.onclick = () => {
-  direction = (direction + 1) % 4;
+  rightCommand.execute();
   drawRover();
 };
+
 document.querySelector<HTMLButtonElement>("#rover-reset")!.onclick = () => {
   x = 2;
   y = 2;
