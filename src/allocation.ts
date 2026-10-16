@@ -50,13 +50,31 @@ function renderAllocationGraphic(results: ShiftResults) {
   ctx.fillStyle = "#233e43";
   ctx.font = "14px system-ui";
   ctx.fillText(`Producers: ${results.assignedCrew} / 6`, 18, 76);
-  ctx.fillText(`Production: ${results.production}`, 18, 102);
-  ctx.fillStyle = "#27766b";
-  ctx.fillRect(18, 110, results.production * 14, 20);
-  ctx.fillStyle = "#233e43";
-  ctx.fillText(`Consumption: ${results.consumption}`, 18, 154);
-  ctx.fillStyle = "#a44d23";
-  ctx.fillRect(18, 162, results.consumption * 14, 20);
+
+  // The values come from A2 results, so the production rules stay in one place.
+  type DisplayRow = {
+    label: string;
+    value: number;
+    color: string;
+  };
+
+  const displayRows: DisplayRow[] = [
+    { label: "Production", value: results.production, color: "#27766b" },
+    { label: "Consumption", value: results.consumption, color: "#a44d23" },
+  ];
+
+  // The row index determines the vertical position of each label and bar.
+  for (let i = 0; i < displayRows.length; i++) {
+    const row = displayRows[i];
+    const labelY = 102 + i * 52;
+    const barY = 110 + i * 52;
+
+    ctx.fillStyle = "#233e43";
+    ctx.fillText(`${row.label}: ${row.value}`, 18, labelY);
+
+    ctx.fillStyle = row.color;
+    ctx.fillRect(18, barY, row.value * 14, 20);
+  }
 }
 
 // this renderer formats the numerical report using the same results.
